@@ -9,6 +9,7 @@ Una ejecución exitosa de GitHub Actions deja los archivos descargables en Actio
 - SAA-C03-Audiolibro-Curso.pdf: todas las páginas del curso silver, en orden de estudio y formato legible por síntesis de voz, con repasos.
 - SAA-C03-Audiolibro-COMPLETO.pdf: curso narrado y referencia textual de la biblioteca de documentación, incluidos Markdown, HTML, PDF, TXT, CSV y JSON.
 - SAA-C03-Audiolibro-COMPLETO.txt: extracción completa para motores de voz o una IA.
+- SAA-C03-Capitulos-TTS.zip: 73 capítulos separados más introducción, para alimentar a una IA lectora por partes.
 - AUDITORIA.json: fuente de cada capítulo, fuente de cada transcripción, duplicados, advertencias y hashes SHA-256 de todos los archivos del repositorio.
 
 La información reiterada se presenta como preguntas de recuerdo, repasos al cerrar cada capítulo y revisitas a capítulos previos, separados 1, 3 y 7 capítulos. Se preservan las preguntas con sus respuestas y se leen las tablas por filas.
