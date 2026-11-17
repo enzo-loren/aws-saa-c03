@@ -72,11 +72,11 @@ def media_ledger(files):
     for page in source_html:
         raw_html=(ROOT/page).read_text("utf8",errors="replace")
         raw_mermaid_codes=[]
-        for match in re.finditer(r"(?is)<pre\b([^>]*)>(.*?)</pre>",raw_html):
-            if re.search(r"(?i)\bmermaid\b",match.group(1)):
-                raw_mermaid_codes.append(match.group(2))
+        pattern=r'(?is)<(pre|div)\b(?=[^>]*\bclass\s*=\s*["\'][^"\']*\bmermaid\b)[^>]*>(.*?)</\1\s*>'
+        for match in re.finditer(pattern,raw_html):
+            raw_mermaid_codes.append((match.group(1).lower(),match.group(2)))
         parsed=get_dom(ROOT/page)
-        parsed_mermaids=parsed.select("pre.mermaid")
+        parsed_mermaids=parsed.select("pre.mermaid, div.mermaid")
         if len(raw_mermaid_codes)!=len(parsed_mermaids):
             raise RuntimeError("Mermaid raw extraction differs from DOM: "+page)
         atomic=text_atoms(parsed)
@@ -111,9 +111,9 @@ def media_ledger(files):
         for block in parsed.select("pre.mermaid,div.mermaid"):
             if block.find_parent(class_="mermaid"): continue
             mermaidno+=1
-            if block.name!="pre":
-                raise RuntimeError("Mermaid con contenedor no soportado, revisar: "+page)
-            original=raw_mermaid_codes[mermaidno-1]
+            raw_tag,original=raw_mermaid_codes[mermaidno-1]
+            if raw_tag!=block.name:
+                raise RuntimeError("Orden o tipo Mermaid inconsistente: "+page)
             fig=block.find_parent("figure")
             caption=fig.find("figcaption") if fig else None
             diagrams.append({"type":"mermaid","id":page+"#mermaid-"+str(mermaidno),
