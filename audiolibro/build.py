@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Genera una edición lineal narrable y una referencia textual auditable."""
 from __future__ import annotations
-import argparse, csv, hashlib, html, json, re, subprocess
+import argparse, csv, hashlib, html, json, re, subprocess, zipfile
+from urllib.parse import unquote
 from pathlib import Path
 from bs4 import BeautifulSoup, NavigableString
 from pypdf import PdfReader
@@ -32,7 +33,7 @@ def tracked():
 def html_parts(content,course=False):
     soup=BeautifulSoup(content,"html.parser")
     root=(soup.select_one("main.content") if course else None) or soup.select_one("main") or soup.select_one("article") or soup.body or soup
-    for bad in root.select("script,style,noscript,nav,aside,footer,form,.sidebar,.feedback"):
+    for bad in root.select("script,style,noscript,nav,aside,footer,form,.sidebar,.feedback,.mermaid"):
         bad.decompose()
     result=[]
     kinds=["h1","h2","h3","h4","p","summary","li","table","figcaption","img","pre","div"]
@@ -74,6 +75,12 @@ def html_parts(content,course=False):
         if t.name=="li" and t.find("li"):
             value=tidy(" ".join(str(x) for x in t.contents if isinstance(x,NavigableString)))
         if not value: continue
+        if t.name=="li" and t.parent and t.parent.name=="ol":
+            ix=len(t.find_previous_siblings("li"))
+            if "q-options" in t.parent.get("class",[]) and ix<26:
+                value="Alternativa "+chr(65+ix)+". "+value
+            else:
+                value="Punto "+str(ix+1)+". "+value
         typ=("titulo" if t.name.startswith("h") else "pregunta" if t.name=="summary" else "diagrama" if t.name=="figcaption" else "codigo" if t.name=="pre" else "texto")
         result.append((typ,value))
     out=[]
@@ -84,7 +91,15 @@ def html_parts(content,course=False):
 def read_source(p):
     ext=p.suffix.lower()
     if ext in {".html",".htm"}:
-        return "\n\n".join(s for _,s in html_parts(p.read_text("utf8",errors="replace")))
+        raw=p.read_text("utf8",errors="replace")
+        content="\n\n".join(s for _,s in html_parts(raw))
+        if content.strip(): return content
+        soup=BeautifulSoup(raw,"html.parser")
+        encoded=soup.select_one("#landing-page-xml")
+        if encoded and encoded.get("value"):
+            decoded=unquote(encoded.get("value"))
+            return "\n".join(tidy(t.get_text(" ",strip=True)) for t in BeautifulSoup(decoded,"html.parser").find_all(["title","abstract","list-card-item"]) if tidy(t.get_text(" ",strip=True)))
+        return content
     if ext==".pdf":
         reader=PdfReader(str(p),strict=False)
         return "\n\n".join("Página "+str(i+1)+".\n"+(page.extract_text() or "") for i,page in enumerate(reader.pages))
@@ -245,6 +260,13 @@ def main():
     fulltxt=out/"SAA-C03-Audiolibro-COMPLETO.txt"
     reftxt=out/"SAA-C03-Fuentes-Completas.txt"
     coretxt.write_text(core,encoding="utf8")
+    matches=list(re.finditer(r"(?m)^CAPÍTULO (\d+)\. ",core))
+    if len(matches)!=len(chapters): raise RuntimeError("No se pueden separar todos los capítulos")
+    with zipfile.ZipFile(out/"SAA-C03-Capitulos-TTS.zip","w",zipfile.ZIP_DEFLATED,compresslevel=8) as bundle:
+        bundle.writestr("000-Introduccion.txt",core[:matches[0].start()])
+        for j,m in enumerate(matches):
+            next_start=matches[j+1].start() if j+1<len(matches) else len(core)
+            bundle.writestr("Capitulo-"+m.group(1).zfill(2)+".txt",core[m.start():next_start])
     references_meta,warnings=references(paths,set(chapters),reftxt)
     with fulltxt.open("w",encoding="utf8") as outstream:
         for src in [coretxt,reftxt]:
