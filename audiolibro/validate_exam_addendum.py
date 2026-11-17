@@ -31,6 +31,8 @@ for text in [spoken,recalled]:
                       r"(?m)^PAUSA DE RECUPERACIÓN ACTIVA\.",
                       r"(?mi)^https?://",r"(?m)^Referencia bronze"]:
         assert re.search(forbidden,text) is None,f"Ruido de lectura: {forbidden}"
+    assert "bronze/" not in text, "Quedaron rutas de fuentes Bronze pronunciables"
+    assert "URL oficial:" not in text, "Quedaron tablas con enlaces pronunciables"
     for must in ["AllowedOrigins","ENI secundaria","AWS Quick Sight","Amazon Comprehend",
                  "Amazon Polly","Alternativa E."]:
         assert must in text, f"Falta contenido del suplemento: {must}"
