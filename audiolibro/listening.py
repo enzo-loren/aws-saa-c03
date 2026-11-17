@@ -94,6 +94,15 @@ def listening_text(raw,mode="fluido"):
             in_reference_section=True
             counters["bibliografias"]+=1
             continue
+        # Las rutas de archivos y tablas de enlaces son evidencia documental,
+        # nunca frases para leer. Se conservan en el maestro sin editar.
+        if ("bronze/" in s or "URL oficial:" in s or
+            s.startswith(("Novedad de esta edición: Biblioteca bronze",
+                          "Este curso forma la capa silver",
+                          "Todo el material para preparar el examen, explicado en español"))):
+            counters["referencias_crudas_eliminadas"]+=1
+            skipped.append({"line":line_no,"sha256":digest(s),"reason":"referencia_no_narrable"})
+            continue
         if SOURCE.match(s) or TECH.match(s) or WEB.fullmatch(s) or re.match(r"^(?:bronze|silver)/\S+$",s):
             counters["metadatos_eliminados"]+=1
             skipped.append({"line":line_no,"sha256":digest(s),"reason":"metadata"})
