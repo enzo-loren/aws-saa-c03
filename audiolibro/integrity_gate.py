@@ -70,7 +70,15 @@ def media_ledger(files):
     image_extensions={".jpg",".jpeg",".png",".gif",".webp",".svg"}
     source_html=sorted(p for p in files if p.startswith("silver/") and p.endswith(".html"))
     for page in source_html:
+        raw_html=(ROOT/page).read_text("utf8",errors="replace")
+        raw_mermaid_codes=[]
+        for match in re.finditer(r"(?is)<pre\b([^>]*)>(.*?)</pre>",raw_html):
+            if re.search(r"(?i)\bmermaid\b",match.group(1)):
+                raw_mermaid_codes.append(match.group(2))
         parsed=get_dom(ROOT/page)
+        parsed_mermaids=parsed.select("pre.mermaid")
+        if len(raw_mermaid_codes)!=len(parsed_mermaids):
+            raise RuntimeError("Mermaid raw extraction differs from DOM: "+page)
         atomic=text_atoms(parsed)
         chapter={
           "path":page, "atoms":len(atomic),
@@ -103,7 +111,9 @@ def media_ledger(files):
         for block in parsed.select("pre.mermaid,div.mermaid"):
             if block.find_parent(class_="mermaid"): continue
             mermaidno+=1
-            original=block.get_text("\n",strip=False)
+            if block.name!="pre":
+                raise RuntimeError("Mermaid con contenedor no soportado, revisar: "+page)
+            original=raw_mermaid_codes[mermaidno-1]
             fig=block.find_parent("figure")
             caption=fig.find("figcaption") if fig else None
             diagrams.append({"type":"mermaid","id":page+"#mermaid-"+str(mermaidno),
