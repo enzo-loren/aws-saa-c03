@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Instalar cliente TTS Edge no oficial
-        run: pip install edge-tts==7.3.1
+        run: pip install edge-tts==7.3.1 mutagen==1.47.0
       - name: Sintetizar y comprobar dos voces
         run: python audiolibro/edge_preview.py
       - uses: actions/upload-artifact@v4
