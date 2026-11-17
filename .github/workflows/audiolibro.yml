@@ -1,0 +1,50 @@
+name: Audiolibro SAA-C03
+
+on:
+  push:
+    branches:
+      - audiolibro-completo
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -r audiolibro/requirements.txt
+      - name: Generate narrated course and full PDF
+        run: python audiolibro/build.py --out dist
+      - name: Upload download package
+        uses: actions/upload-artifact@v4
+        with:
+          name: SAA-C03-Audiolibro
+          path: dist/
+          retention-days: 90
+          compression-level: 6
+      - name: Publish downloadable release
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="audiolibro-saa-c03"
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --target "$GITHUB_SHA" --title "SAA-C03 - Audiolibro completo" --notes "PDF de lectura con repaso, fuentes documentales y reporte de cobertura. Generado desde la rama audiolibro-completo."
+          fi
+          gh release upload "$tag" \
+            dist/SAA-C03-Audiolibro-COMPLETO.pdf \
+            dist/SAA-C03-Audiolibro-Curso.pdf \
+            dist/SAA-C03-Audiolibro-COMPLETO.txt \
+            dist/SAA-C03-Audiolibro-Curso.txt \
+            dist/AUDITORIA.json --clobber
