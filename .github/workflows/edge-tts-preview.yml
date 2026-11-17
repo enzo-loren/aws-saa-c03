@@ -1,0 +1,40 @@
+name: Vista previa TTS Edge (experimental)
+on:
+  push:
+    branches: [audiolibro-completo]
+    paths:
+      - 'audiolibro/edge_preview.py'
+      - '.github/workflows/edge-tts-preview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Instalar cliente TTS Edge no oficial
+        run: pip install edge-tts==7.3.1
+      - name: Sintetizar y comprobar dos voces
+        run: python audiolibro/edge_preview.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SAA-C03-muestras-Edge-TTS
+          path: dist-edge-preview/
+          retention-days: 30
+      - name: Publicar las muestras MP3
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="saa-c03-edge-tts-muestras"
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --target "$GITHUB_SHA" --title "SAA-C03 | Muestras Microsoft Edge TTS" --notes "Muestras experimentales con cliente edge-tts no oficial. Pueden diferir del audio exacto reproducido por Edge Read Aloud. Incluyen fuente y hashes."
+          fi
+          gh release upload "$tag" dist-edge-preview/*.mp3 dist-edge-preview/MANIFIESTO-AUDIO.json --clobber
