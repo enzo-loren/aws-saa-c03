@@ -261,6 +261,12 @@ def main():
     out=(ROOT/a.out).resolve(); out.mkdir(parents=True,exist_ok=True)
     paths=tracked(); chapters=all_chapters()
     core,register=narrate(chapters)
+    base_course=core
+    supplement_path=ROOT/"audiolibro"/"suplemento-examen-2026.txt"
+    supplement=supplement_path.read_text(encoding="utf8")
+    if not supplement.startswith("SUPLEMENTO DE COBERTURA EXAMEN SAA-C03"):
+        raise RuntimeError("Suplemento de examen no reconocido")
+    core=base_course+"\n\n"+supplement+"\n"
     coretxt=out/"SAA-C03-Audiolibro-Curso.txt"
     fulltxt=out/"SAA-C03-Audiolibro-COMPLETO.txt"
     reftxt=out/"SAA-C03-Fuentes-Completas.txt"
@@ -270,8 +276,9 @@ def main():
     with zipfile.ZipFile(out/"SAA-C03-Capitulos-TTS.zip","w",zipfile.ZIP_DEFLATED,compresslevel=8) as bundle:
         bundle.writestr("000-Introduccion.txt",core[:matches[0].start()])
         for j,m in enumerate(matches):
-            next_start=matches[j+1].start() if j+1<len(matches) else len(core)
+            next_start=matches[j+1].start() if j+1<len(matches) else len(base_course)
             bundle.writestr("Capitulo-"+m.group(1).zfill(2)+".txt",core[m.start():next_start])
+        bundle.writestr("074-Suplemento-Examen-2026.txt",supplement)
     references_meta,warnings=references(paths,set(chapters),reftxt)
     with fulltxt.open("w",encoding="utf8") as outstream:
         for src in [coretxt,reftxt]:
@@ -279,6 +286,8 @@ def main():
                 for line in stream: outstream.write(line)
     audit={
         "source_commit":subprocess.check_output(["git","rev-parse","HEAD"],cwd=ROOT).decode().strip(),
+        "official_exam_2026_addendum":supplement_path.relative_to(ROOT).as_posix(),
+        "addendum_sha256":digest(supplement_path),
         "tracked_count":len(paths),"chapters":len(chapters),"reference_sources":len(references_meta),
         "warnings":warnings,"chapters_detail":register,"references_detail":references_meta,
         "all_tracked_files":[{"file":p.relative_to(ROOT).as_posix(),"size":p.stat().st_size,"sha256":digest(p)} for p in paths]
