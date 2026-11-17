@@ -47,4 +47,5 @@ jobs:
             dist/SAA-C03-Audiolibro-Curso.pdf \
             dist/SAA-C03-Audiolibro-COMPLETO.txt \
             dist/SAA-C03-Audiolibro-Curso.txt \
+            dist/SAA-C03-Capitulos-TTS.zip \
             dist/AUDITORIA.json --clobber
