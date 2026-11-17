@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Genera una edición lineal narrable y una referencia textual auditable."""
 from __future__ import annotations
-import argparse, csv, hashlib, html, json, re, subprocess, zipfile
+import argparse, csv, hashlib, html, json, re, subprocess, zipfile, shutil
+from listening import listening_text
 from urllib.parse import unquote
 from pathlib import Path
 from bs4 import BeautifulSoup, NavigableString
@@ -266,28 +267,51 @@ def main():
     supplement=supplement_path.read_text(encoding="utf8")
     if not supplement.startswith("SUPLEMENTO DE COBERTURA EXAMEN SAA-C03"):
         raise RuntimeError("Suplemento de examen no reconocido")
-    core=base_course+"\n\n"+supplement+"\n"
+    raw_course=base_course+"\n\n"+supplement+"\n"
+    fluent,fluent_report=listening_text(raw_course,"fluido")
+    recalled,recall_report=listening_text(raw_course,"repaso")
     coretxt=out/"SAA-C03-Audiolibro-Curso.txt"
+    listen_txt=out/"SAA-C03-SOLO-ESCUCHAR.txt"
+    recall_txt=out/"SAA-C03-Repaso-Espaciado.txt"
+    unedited=out/"SAA-C03-Audiolibro-BASE-TEXTUAL.txt"
     fulltxt=out/"SAA-C03-Audiolibro-COMPLETO.txt"
     reftxt=out/"SAA-C03-Fuentes-Completas.txt"
-    coretxt.write_text(core,encoding="utf8")
-    matches=list(re.finditer(r"(?m)^CAPÍTULO (\d+)\. ",core))
-    if len(matches)!=len(chapters): raise RuntimeError("No se pueden separar todos los capítulos")
-    with zipfile.ZipFile(out/"SAA-C03-Capitulos-TTS.zip","w",zipfile.ZIP_DEFLATED,compresslevel=8) as bundle:
-        bundle.writestr("000-Introduccion.txt",core[:matches[0].start()])
-        for j,m in enumerate(matches):
-            next_start=matches[j+1].start() if j+1<len(matches) else len(base_course)
-            bundle.writestr("Capitulo-"+m.group(1).zfill(2)+".txt",core[m.start():next_start])
-        bundle.writestr("074-Suplemento-Examen-2026.txt",supplement)
+    coretxt.write_text(fluent,encoding="utf8")
+    listen_txt.write_text(fluent,encoding="utf8")
+    recall_txt.write_text(recalled,encoding="utf8")
+    unedited.write_text(raw_course,encoding="utf8")
+    (out/"AUDITORIA-ESCUCHA.json").write_text(json.dumps({
+        "fluido":fluent_report,"repaso":recall_report,
+        "audiocurso_original_bytes_preserved_in":unedited.name,
+        "referencias_preservadas_en":"SAA-C03-Audiolibro-COMPLETO.pdf"
+    },ensure_ascii=False,indent=2),encoding="utf8")
+    # 72 capítulos teóricos; el capítulo 73 es un catálogo bibliográfico.
+    # Este último permanece íntegro en el PDF técnico, pero no se pronuncia.
+    for output_name,narration in [
+        ("SAA-C03-Capitulos-TTS.zip",fluent),
+        ("SAA-C03-Capitulos-REPASO-TTS.zip",recalled)]:
+        markers=list(re.finditer(r"(?m)^Capítulo (\d+)\. ",narration))
+        if [int(m.group(1)) for m in markers]!=list(range(1,73))+[74]:
+            raise RuntimeError("Error en partición del audiocurso: "+output_name)
+        with zipfile.ZipFile(out/output_name,"w",zipfile.ZIP_DEFLATED,compresslevel=8) as bundle:
+            bundle.writestr("000-Introduccion.txt",narration[:markers[0].start()])
+            for j,m in enumerate(markers):
+                end=markers[j+1].start() if j+1<len(markers) else len(narration)
+                file=("074-Suplemento-Examen-2026.txt" if int(m.group(1))==74
+                      else "Capitulo-"+m.group(1).zfill(2)+".txt")
+                bundle.writestr(file,narration[m.start():end])
     references_meta,warnings=references(paths,set(chapters),reftxt)
-    with fulltxt.open("w",encoding="utf8") as outstream:
-        for src in [coretxt,reftxt]:
-            with src.open(encoding="utf8") as stream:
-                for line in stream: outstream.write(line)
+    with fulltxt.open("w",encoding="utf8") as stream:
+        stream.write(raw_course+"\n\n")
+        with reftxt.open(encoding="utf8") as source:
+            for line in source: stream.write(line)
     audit={
         "source_commit":subprocess.check_output(["git","rev-parse","HEAD"],cwd=ROOT).decode().strip(),
         "official_exam_2026_addendum":supplement_path.relative_to(ROOT).as_posix(),
         "addendum_sha256":digest(supplement_path),
+        "listening_edition":listen_txt.name,
+        "listening_sha256":digest(listen_txt),
+        "listening_audit":"AUDITORIA-ESCUCHA.json",
         "tracked_count":len(paths),"chapters":len(chapters),"reference_sources":len(references_meta),
         "warnings":warnings,"chapters_detail":register,"references_detail":references_meta,
         "all_tracked_files":[{"file":p.relative_to(ROOT).as_posix(),"size":p.stat().st_size,"sha256":digest(p)} for p in paths]
@@ -298,9 +322,12 @@ def main():
     font=Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")
     if not font.exists(): raise RuntimeError("Falta fuente Unicode DejaVuSans")
     pdfmetrics.registerFont(TTFont("DejaVu",str(font)))
-    short=PdfWriter(out/"SAA-C03-Audiolibro-Curso.pdf","SAA-C03 Curso audio")
+    short=PdfWriter(out/"SAA-C03-Audiolibro-Curso.pdf","SAA-C03 | Edición fluida para escuchar")
     short.append(coretxt); short.save()
-    full=PdfWriter(out/"SAA-C03-Audiolibro-COMPLETO.pdf","SAA-C03 Audiolibro exhaustivo")
+    shutil.copyfile(out/"SAA-C03-Audiolibro-Curso.pdf",out/"SAA-C03-SOLO-ESCUCHAR.pdf")
+    review=PdfWriter(out/"SAA-C03-Repaso-Espaciado.pdf","SAA-C03 | Estudio con repetición espaciada")
+    review.append(recall_txt); review.save()
+    full=PdfWriter(out/"SAA-C03-Audiolibro-COMPLETO.pdf","SAA-C03 | Archivo documental auditado")
     full.append(fulltxt); full.save()
     print(json.dumps({"chapters":len(chapters),"reference_sources":len(references_meta),
         "warnings":len(warnings),"pdf_bytes":(out/"SAA-C03-Audiolibro-COMPLETO.pdf").stat().st_size}))
