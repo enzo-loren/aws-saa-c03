@@ -71,6 +71,7 @@ sample="\n".join(p.extract_text() or "" for p in pdf.pages[:4])
 assert "Fuente: silver/" not in sample
 assert "SHA256" not in sample
 assert "Capítulo 1." in sample
+assert "Audiolibro narrable y referencia" not in sample, "Hay pies técnicos en las páginas TTS"
 assert (OUT/"SAA-C03-SOLO-ESCUCHAR.pdf").is_file()
 assert (OUT/"SAA-C03-Repaso-Espaciado.pdf").is_file()
 
