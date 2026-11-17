@@ -77,11 +77,16 @@ def html_parts(content,course=False):
         if not value: continue
         if t.name=="li" and t.parent and t.parent.name=="ol":
             ix=len(t.find_previous_siblings("li"))
-            if "q-options" in t.parent.get("class",[]) and ix<26:
+            question_page=course and "banco de preguntas" in (soup.title.get_text(" ",strip=True).lower() if soup.title else "")
+            option_list="q-options" in t.parent.get("class",[]) or (question_page and len(t.parent.find_all("li",recursive=False)) in (4,5))
+            if option_list and ix<26:
                 value="Alternativa "+chr(65+ix)+". "+value
             else:
                 value="Punto "+str(ix+1)+". "+value
         typ=("titulo" if t.name.startswith("h") else "pregunta" if t.name=="summary" else "diagrama" if t.name=="figcaption" else "codigo" if t.name=="pre" else "texto")
+        if t.name=="p" and t.find_parent(class_="callout"):
+            wrapper=t.find_parent(class_="callout")
+            if set(wrapper.get("class",[])).intersection({"exam","warn","tip"}): typ="clave"
         result.append((typ,value))
     out=[]
     for item in result:
@@ -146,7 +151,7 @@ def narrate(chapters):
     for number,p in enumerate(chapters,1):
         parts=html_parts(p.read_text("utf8",errors="replace"),True)
         title=next((s for k,s in parts if k=="titulo"),p.stem)
-        anchors=[first_sentence(s) for k,s in parts if k=="clave" and len(s)>40][:5]
+        anchors=[first_sentence(s) for k,s in parts if k=="clave" and len(s)>40 and not s.startswith(("Página integrada","Edición unificada"))][:5]
         if len(anchors)<3:
             anchors.extend(first_sentence(s) for k,s in parts if k=="texto" and len(s)>75 and first_sentence(s) not in anchors)
         anchors=anchors[:5]
