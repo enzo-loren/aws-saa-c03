@@ -32,6 +32,8 @@ jobs:
         run: python audiolibro/integrity_gate.py pre --out dist
       - name: Generate narrated course and full PDF
         run: python audiolibro/build.py --out dist
+      - name: Validate exam addendum against official format
+        run: python audiolibro/validate_exam_addendum.py dist
       - name: Integrity gate POST - embed originals and visual evidence
         run: python audiolibro/integrity_gate.py post --out dist
       - name: Upload download package
