@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Muestra verificable de TTS de Edge. Servicio no oficial: puede fallar."""
 from __future__ import annotations
-import asyncio, hashlib, json, subprocess
+import asyncio, hashlib, json
+from mutagen.mp3 import MP3
 from pathlib import Path
 import edge_tts
 
@@ -26,8 +27,7 @@ async def synthesize(voice,text,path):
             await asyncio.sleep(2*(i+1))
 
 def ffprobe(path):
-    v=subprocess.check_output(["ffprobe","-v","error","-show_entries","format=duration","-of","default=noprint_wrappers=1:nokey=1",str(path)])
-    duration=float(v.strip())
+    duration=float(MP3(str(path)).info.length)
     if not path.is_file() or path.stat().st_size<4000 or duration<5:
         raise RuntimeError(f"Audio no válido: {path}")
     return duration
