@@ -32,7 +32,7 @@ jobs:
         run: python audiolibro/integrity_gate.py pre --out dist
       - name: Generate narrated course and full PDF
         run: python audiolibro/build.py --out dist
-      - name: Validate exam addendum against official format
+      - name: Validate narration, quiz fidelity, and spoken-only PDF
         run: python audiolibro/validate_exam_addendum.py dist
       - name: Integrity gate POST - embed originals and visual evidence
         run: python audiolibro/integrity_gate.py post --out dist
@@ -55,6 +55,13 @@ jobs:
           gh release upload "$tag" \
             dist/SAA-C03-Audiolibro-COMPLETO.pdf \
             dist/SAA-C03-Audiolibro-Curso.pdf \
+            dist/SAA-C03-SOLO-ESCUCHAR.pdf \
+            dist/SAA-C03-SOLO-ESCUCHAR.txt \
+            dist/SAA-C03-Repaso-Espaciado.pdf \
+            dist/SAA-C03-Repaso-Espaciado.txt \
+            dist/SAA-C03-Capitulos-REPASO-TTS.zip \
+            dist/SAA-C03-Audiolibro-BASE-TEXTUAL.txt \
+            dist/AUDITORIA-ESCUCHA.json \
             dist/SAA-C03-Audiolibro-COMPLETO.txt \
             dist/SAA-C03-Audiolibro-Curso.txt \
             dist/SAA-C03-Capitulos-TTS.zip \
