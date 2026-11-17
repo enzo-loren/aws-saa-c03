@@ -212,13 +212,16 @@ class PdfWriter:
     def __init__(self,path,title):
         self.c=canvas.Canvas(str(path),pagesize=A4,pageCompression=1)
         self.c.setTitle(title)
+        self.spoken_only=("Edición fluida" in title or "repetición espaciada" in title)
         self.c.setAuthor("Enzo Loren: adaptación automática del repositorio AWS SAA-C03")
         self.w,self.h=A4
         self.x=48; self.y=self.h-50; self.page=1
     def newline(self):
-        self.c.setFont("DejaVu",8)
-        self.c.drawString(48,23,"AWS SAA-C03 | Audiolibro narrable y referencia")
-        self.c.drawRightString(self.w-48,23,str(self.page))
+        # En los PDFs de voz no se deben leer pies, números ni etiquetas técnicas.
+        if not self.spoken_only:
+            self.c.setFont("DejaVu",8)
+            self.c.drawString(48,23,"AWS SAA-C03 | Archivo documental")
+            self.c.drawRightString(self.w-48,23,str(self.page))
         self.c.showPage()
         self.page+=1
         self.y=self.h-50
@@ -252,7 +255,8 @@ class PdfWriter:
         with p.open(encoding="utf8") as f:
             for line in f: self.line(line.rstrip("\n"))
     def save(self):
-        self.newline()
+        if not self.spoken_only:
+            self.newline()
         self.c.save()
 
 def main():
