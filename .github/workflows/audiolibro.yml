@@ -28,8 +28,12 @@ jobs:
           python-version: "3.12"
       - name: Install
         run: pip install -r audiolibro/requirements.txt
+      - name: Integrity gate PRE - verify source and build immutable archive
+        run: python audiolibro/integrity_gate.py pre --out dist
       - name: Generate narrated course and full PDF
         run: python audiolibro/build.py --out dist
+      - name: Integrity gate POST - embed originals and visual evidence
+        run: python audiolibro/integrity_gate.py post --out dist
       - name: Upload download package
         uses: actions/upload-artifact@v4
         with:
@@ -52,4 +56,9 @@ jobs:
             dist/SAA-C03-Audiolibro-COMPLETO.txt \
             dist/SAA-C03-Audiolibro-Curso.txt \
             dist/SAA-C03-Capitulos-TTS.zip \
+            dist/SAA-C03-ORIGINALES-EXACTOS.zip \
+            dist/PRUEBA-INTEGRIDAD.json \
+            dist/SAA-C03-ANEXO-DIAGRAMAS.pdf \
+            dist/SAA-C03-TRANSCRIPCION-LITERAL-SILVER.txt \
+            dist/SAA-C03-DIAGRAMAS-NARRABLES.txt \
             dist/AUDITORIA.json --clobber
