@@ -1,0 +1,99 @@
+SUPLEMENTO DE COBERTURA EXAMEN SAA-C03. REVISIÓN DEL 17 DE NOVIEMBRE DE 2026.
+
+Esta sección actualiza el vocabulario y cubre vacíos detectados al contrastar el audiocurso con la guía oficial de AWS y sus preguntas de ejemplo. Es un complemento, no un reemplazo de los materiales originales. Escucha cada pregunta e intenta responder antes de oír su solución.
+
+CORRECCIÓN DEL TEMARIO: SON CATORCE TAREAS, NO TRECE.
+La guía SAA-C03 vigente enumera tres tareas en seguridad, dos en resiliencia, cinco en alto rendimiento y cuatro en optimización de costos. Tres más dos más cinco más cuatro son catorce. La quinta tarea de rendimiento, la tres punto cinco, trata de ingestión y transformación de datos. Si escuchas trece tareas en un capítulo original, reemplaza ese recuento mentalmente por catorce. No significa que debas saltarte ninguna de las tareas originales.
+
+UNIDAD UNO. CORS EN AMAZON S3.
+
+Supón que una aplicación web se abre desde https://app.ejemplo.com y que su JavaScript necesita consultar o subir objetos a un bucket de Amazon S3. El navegador observa que el origen de la página es distinto del origen del bucket. Esa diferencia puede activar las reglas del navegador sobre solicitudes entre orígenes, llamadas cross-origin requests. El mecanismo se denomina CORS, Cross-Origin Resource Sharing.
+
+En S3, una configuración CORS permite declarar qué orígenes, métodos y encabezados pueden participar en solicitudes realizadas desde un navegador. Sus campos habituales incluyen AllowedOrigins, AllowedMethods y AllowedHeaders. Para una solicitud compleja, el navegador puede emitir antes una solicitud preflight, mediante el método OPTIONS, para comprobar esos permisos.
+
+La trampa más importante: CORS no da autorización de acceso a un objeto privado. Las políticas del bucket, IAM y los permisos siguen aplicándose. Para una aplicación legítima con objetos privados, puedes necesitar dos cosas a la vez: autorización válida, por ejemplo con URL prefirmada, y una configuración CORS adecuada para el origen de la página.
+
+Recuerda esta distinción. Si un navegador falla al consultar S3 desde un dominio distinto, piensa en CORS. Si la identidad carece de permisos para leer o escribir el objeto, CORS por sí solo no resuelve AccessDenied.
+
+PREGUNTA NUEVA DE RESPUESTA MÚLTIPLE. Selecciona DOS de CINCO opciones.
+Una aplicación de reservas funciona en https://reservas.ejemplo.com. El navegador debe subir una fotografía directamente a un bucket privado de S3 con una autorización temporal, sin hacer público el bucket. ¿Qué dos medidas son apropiadas?
+
+Alternativa A. Deshabilitar S3 Block Public Access y permitir escritura anónima en todo el bucket.
+Alternativa B. Configurar CORS del bucket para admitir el origen HTTPS de la aplicación, el método PUT y los encabezados necesarios.
+Alternativa C. Entregar al navegador las access keys de largo plazo del usuario root.
+Alternativa D. Emitir desde el backend una URL prefirmada de PUT para el objeto y con vencimiento corto.
+Alternativa E. Desactivar HTTPS para evitar la solicitud preflight.
+
+PAUSA. Elige dos y justifica por qué las otras tres son incorrectas.
+
+SOLUCIÓN. B y D. B permite que el navegador efectúe la operación entre orígenes si se cumplen las reglas CORS. D ofrece una autorización limitada y temporal para la subida sin abrir el bucket al público. A elimina una barrera de seguridad sin necesidad. C expone credenciales críticas. E degrada el transporte y no elimina la causa del control de origen.
+
+UNIDAD DOS. ENI SECUNDARIA PARA RECUPERACIÓN Y FAILOVER EN EC2.
+
+Una Elastic Network Interface, abreviada ENI, representa una interfaz de red virtual de una VPC. Dispone de atributos de red, como direcciones IP privadas y grupos de seguridad asociados. Algunas arquitecturas utilizan una interfaz secundaria para mantener estable una dirección IP de servicio cuando se sustituye una instancia EC2.
+
+El patrón es el siguiente. Una instancia primaria atiende un servicio mediante una ENI secundaria. Si falla, la arquitectura desacopla esa interfaz de la instancia fallida y la conecta a una instancia de reemplazo compatible en la misma zona de disponibilidad. Como la interfaz conserva sus propiedades de red, el tráfico hacia su dirección privada puede volver a dirigirse al servicio sin modificar la DNS ni la tabla de rutas. Hay un intervalo de interrupción mientras se realiza el cambio. La automatización puede acelerar el proceso.
+
+No confundas esta técnica con alta disponibilidad entre zonas. Una ENI pertenece a una subnet de una zona de disponibilidad y no se puede transportar libremente a otra AZ. Si el requisito explícito es tolerar la caída de toda una zona, considera arquitecturas multi-AZ, balanceadores y servicios administrados con mecanismos de conmutación entre zonas.
+
+Otra trampa: no presupongas que la interfaz primaria de una instancia en ejecución se puede desacoplar como una interfaz secundaria. La pregunta oficial de ejemplo precisamente aprovecha la distinción.
+
+PREGUNTA NUEVA DE OPCIÓN ÚNICA.
+Un sistema heredado se conecta a un servidor mediante una dirección IPv4 privada fija. El sistema no puede modificarse para usar un balanceador ni DNS. Dos instancias compatibles se encuentran en la misma zona de disponibilidad. ¿Qué estrategia puede restaurar el servicio al fallar la instancia activa?
+
+Alternativa A. Configurar un nuevo registro DNS público y esperar su propagación.
+Alternativa B. Trasladar una ENI secundaria que contiene la dirección privada de servicio a la instancia de reserva.
+Alternativa C. Asignar una Elastic IP pública y obligar a los clientes a cambiar sus direcciones de destino.
+Alternativa D. Crear dos interfaces primarias con exactamente la misma IP en el mismo subnet y mantenerlas activas simultáneamente.
+
+PAUSA. Elige y explica la restricción principal.
+
+SOLUCIÓN. B. La ENI secundaria es el recurso de red transferible que mantiene la dirección privada y permite recuperación dentro de la misma zona. A no respeta el requisito de conectarse a una IP privada fija sin DNS. C cambia el modelo de direccionamiento y exige modificaciones. D no es una configuración válida: dos interfaces de red activas de la misma subnet no pueden tener la misma dirección privada.
+
+UNIDAD TRES. PRÁCTICA DE RESPUESTA MÚLTIPLE SEGÚN EL FORMATO OFICIAL.
+
+El SAA-C03 no contiene únicamente preguntas con una respuesta correcta. AWS también usa preguntas con dos o más respuestas correctas elegidas entre cinco o más alternativas. En estos casos, no basta con identificar una tecnología razonable: cada alternativa seleccionada debe aportar algo necesario sin violar los requisitos del escenario.
+
+PREGUNTA NUEVA. Selecciona DOS de CINCO opciones.
+Un servicio de inventario se ejecuta en una sola zona de disponibilidad. Su frontend usa EC2 y su base de datos es Amazon RDS. El negocio quiere seguir atendiendo peticiones si una zona completa deja de funcionar, con el menor esfuerzo operativo razonable. ¿Qué dos cambios constituyen una solución adecuada?
+
+Alternativa A. Utilizar un Application Load Balancer delante de un grupo de Auto Scaling que distribuye instancias de la aplicación en, al menos, dos zonas de disponibilidad.
+Alternativa B. Mantener las instancias web en la misma zona y simplemente aumentar su tamaño.
+Alternativa C. Configurar la base de datos RDS con un despliegue Multi-AZ adecuado para disponer de failover administrado.
+Alternativa D. Crear una segunda subnet en la misma zona y dejar la base de datos exactamente donde está.
+Alternativa E. Reemplazar el backup de la base de datos por una copia manual semanal guardada en un único volumen EBS.
+
+PAUSA. Selecciona dos.
+
+SOLUCIÓN. A y C. Ambas capas deben soportar la pérdida de una zona. A protege la capa de aplicación con instancias distribuidas y balanceo. C agrega tolerancia a fallos y conmutación de la base de datos. B y D no cambian la zona de fallo. E debilita el mecanismo de recuperación y no aporta disponibilidad ante el evento descrito.
+
+UNIDAD CUATRO. NOMBRES ACTUALIZADOS Y SERVICIOS DEL ALCANCE OFICIAL.
+
+En noviembre de 2026, AWS anunció un cambio de marca: Amazon Quick pasó a llamarse AWS Quick, y Amazon Quick Sight pasó a llamarse AWS Quick Sight. El material original capturado meses antes usa QuickSight en varias secciones. Debes reconocer los nombres históricos y actuales, porque el vocabulario del examen se actualiza gradualmente y puede coexistir con la documentación previa. Lo importante para esta certificación es reconocer la función de análisis y visualización de datos cuando un escenario menciona dashboards y business intelligence.
+
+La lista oficial de servicios dentro de alcance es amplia y no implica que todos tengan la misma prioridad. Once nombres no aparecieron explícitamente en el cuerpo narrado Silver al aplicar un inventario léxico. Escucha esta referencia breve, pero no confundas estas definiciones con una explicación profunda de cada servicio.
+
+AWS Data Exchange permite encontrar y trabajar con conjuntos de datos de terceros.
+AWS Data Pipeline es un servicio histórico de orquestación de movimientos y procesamiento de datos.
+VMware Cloud on AWS se refiere a cargas VMware ejecutadas en infraestructura AWS en un entorno híbrido.
+Amazon EKS Distro proporciona una distribución de Kubernetes relacionada con EKS para implementaciones autogestionadas.
+AWS Device Farm permite probar aplicaciones móviles y web en dispositivos y navegadores alojados.
+Amazon Comprehend ofrece procesamiento de lenguaje natural, por ejemplo entidades, sentimientos y frases clave.
+Amazon Lex permite construir interfaces de conversación mediante voz y texto.
+Amazon Polly convierte texto en voz.
+Amazon Rekognition ofrece análisis de imágenes y videos.
+Amazon Textract extrae texto y estructura de documentos.
+Amazon Translate realiza traducción automática entre idiomas.
+
+En el dominio de resiliencia, AWS menciona expresamente Amazon Comprehend y Amazon Polly como ejemplos de servicios administrados que deben reconocerse en casos de uso. No es necesario confundir su función con un motor de base de datos o de streaming: Comprehend analiza lenguaje; Polly sintetiza voz. Escucha esa asociación una segunda vez. Comprehend, análisis de lenguaje. Polly, texto a voz.
+
+CIERRE Y LÍMITES.
+
+Esta actualización corrige vacíos identificados frente a fuentes públicas oficiales y añade práctica del formato select TWO con cinco opciones. No equivale a certificar que conocemos las preguntas reales ni a sustituir el examen oficial de práctica. Para comprobar preparación, realiza preguntas oficiales nuevas, explica los distractores y comprueba tus dudas con documentación reciente de AWS.
+
+Fuentes oficiales de esta actualización:
+Guía SAA-C03: https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html
+CORS en S3: https://docs.aws.amazon.com/AmazonS3/latest/userguide/cors.html
+ENI para failover: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/scenarios-enis.html
+Renombrado AWS Quick: https://aws.amazon.com/about-aws/whats-new/2026/11/amazon-quick-aws-quick/
+Ejemplos de AWS: https://d1.awsstatic.com/training-and-certification/docs-sa-assoc/AWS-Certified-Solutions-Architect-Associate_Sample-Questions.pdf
